@@ -39,7 +39,6 @@ function M.get_highest_net_folder(bin_debug_path)
   return dirs[1]
 end
 
--- Build and return the full path to the .dll file for debugging.
 function M.build_dll_path()
   local current_file = vim.api.nvim_buf_get_name(0)
   local current_dir = vim.fn.fnamemodify(current_file, ":p:h")
@@ -54,12 +53,33 @@ function M.build_dll_path()
     error("No .csproj file found in project root")
   end
 
-  local project_name = vim.fn.fnamemodify(csproj_files[1], ":t:r")
+  local default_project_name = vim.fn.fnamemodify(csproj_files[1], ":t:r")
+  local project_name = default_project_name
+
   local bin_debug_path = project_root .. "/bin/Debug"
   local highest_net_folder = M.get_highest_net_folder(bin_debug_path)
   local dll_dir = highest_net_folder or bin_debug_path
-  
-  local dll_path = dll_dir .. "/" .. project_name .. ".dll"
+
+  local function build_path(name)
+    return dll_dir .. "/" .. name .. ".dll"
+  end
+
+  local dll_path = build_path(project_name)
+
+  -- Check if file exists
+  if vim.fn.filereadable(dll_path) == 0 then
+    -- Prompt the user
+    project_name = vim.fn.input(
+      "DLL not found. Enter project name (default = " .. default_project_name .. "): ",
+      default_project_name
+    )
+
+    dll_path = build_path(project_name)
+
+    if vim.fn.filereadable(dll_path) == 0 then
+      error("DLL still not found at: " .. dll_path)
+    end
+  end
 
   print("Launching: " .. dll_path)
   return dll_path
